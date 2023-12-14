@@ -64,9 +64,9 @@ def scrape_listing_page(url):
         logging.info(sotu)
         sotu.save()
 
-    next_link = page.cssselect("li.text a")
+    next_link = page.cssselect("li.next a")
     if next_link:
-        scrape_listing_page(next_link.xpath("@href")[0])
+        scrape_listing_page(next_link[0].xpath("@href")[0])
 
 
 def scrape_page(url):
