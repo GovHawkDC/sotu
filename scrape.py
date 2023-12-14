@@ -1,8 +1,7 @@
-from dataclasses import dataclass, field
-from dataclasses_json import dataclass_json, config
-from datetime import datetime
+from dataclasses import dataclass
+from dataclasses_json import dataclass_json
 import dateutil.parser
-import json
+import logging
 import lxml.html
 import lxml.etree
 import os
@@ -38,6 +37,7 @@ class Doc:
 
 
 def scrape_listing_page(url):
+    logging.info(f"GET {url}")
     page = requests.get(url).content
     page = lxml.html.fromstring(page)
     page.make_links_absolute(url)
@@ -49,7 +49,6 @@ def scrape_listing_page(url):
         title = link.text_content().strip()
         pres = row.cssselect("div.col-sm-4 p a")[0].text_content().strip()
         sotu_url = link.xpath("@href")[0]
-        print(title, date, sotu_url)
 
         text, footnote, citation = scrape_page(sotu_url)
 
@@ -62,22 +61,32 @@ def scrape_listing_page(url):
                    footnote,
         )
 
-        print(sotu)
+        logging.info(sotu)
         sotu.save()
 
+    next_link = page.cssselect("li.text a")
+    if next_link:
+        scrape_listing_page(next_link.xpath("@href")[0])
 
 
 def scrape_page(url):
+    logging.info(f"GET {url}")
     page = requests.get(url).content
     page = lxml.html.fromstring(page)
 
     content = page.cssselect("div.field-docs-content")[0]
     text = lxml.etree.tostring(content,encoding='unicode')
 
-    footnote = page.cssselect("div.field-docs-footnote")[0].text_content().strip()
     citation = page.cssselect("div.field-prez-document-citation")[0].text_content().strip()
 
+    footnote = ""
+    if page.cssselect("div.field-docs-footnote"):
+        footnote = page.cssselect("div.field-docs-footnote")[0].text_content().strip()
+
     return (text, footnote, citation)
+
+
+logging.basicConfig(level=logging.INFO)
 
 url ="https://www.presidency.ucsb.edu/documents/app-categories/spoken-addresses-and-remarks/presidential/state-the-union-addresses?items_per_page=60"
 scrape_listing_page(url)
